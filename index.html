@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BI Photo Compositor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-title">
+      <img src="bi-logo.svg" alt="Business Insider" class="bi-logo" />
+      <h1>Photo Compositor</h1>
+    </div>
+    <div class="tips-section">
+      <p class="tips-label">Tips for good composites</p>
+      <ul class="tips">
+        <li><strong>Match your scale</strong> — frame each photo so subjects appear at roughly the same size</li>
+        <li><strong>Match lighting &amp; tone</strong> — photos with similar brightness and color temperature look most cohesive</li>
+        <li><strong>Always go hi-res</strong> — these export at 2000px wide; low-quality sources will look pixelated</li>
+        <li><strong>Keep backgrounds clean</strong> — simple or solid backdrops beat step-and-repeats every time</li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <!-- Step 1: Layout -->
+    <section class="step">
+      <h2><span class="step-num">1</span> Choose a Split</h2>
+      <div class="preset-grid" id="preset-grid"></div>
+    </section>
+
+    <!-- Step 2: Upload -->
+    <section class="step">
+      <h2><span class="step-num">2</span> Upload Photos</h2>
+      <p class="step-hint" id="upload-hint">Select a split first</p>
+      <div class="upload-zones" id="upload-zones"></div>
+    </section>
+
+    <!-- Step 3: Generate & Download -->
+    <section class="step">
+      <h2><span class="step-num">3</span> Preview &amp; Download</h2>
+
+      <div class="preview-controls">
+        <button id="btn-compose" disabled>Generate</button>
+        <button id="btn-reset" class="secondary">Reset</button>
+        <button id="btn-download" class="btn-download" disabled hidden>↓ Download Both</button>
+      </div>
+
+      <!-- Dual canvas output -->
+      <div class="canvas-area" id="canvas-area">
+        <div class="canvas-placeholder" id="canvas-placeholder">
+          <span>Your composites will appear here</span>
+        </div>
+        <div class="canvas-loading" id="canvas-loading" hidden>
+          <div class="spinner"></div>
+          <span>Generating…</span>
+        </div>
+        <!-- canvas entries injected by JS -->
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
