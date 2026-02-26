@@ -2,6 +2,7 @@
 
 // Two simple layout choices — each generates BOTH output formats below
 const LAYOUTS = [
+  { id: "1-way", name: "Single Photo", photoCount: 1 },
   { id: "2-way", name: "2-Way Split", photoCount: 2 },
   { id: "3-way", name: "3-Way Split", photoCount: 3 },
 ];
@@ -144,7 +145,7 @@ function renderPresets() {
 
     const sub = document.createElement("div");
     sub.className = "preset-card-sub";
-    sub.textContent = `${layout.photoCount} photos`;
+    sub.textContent = `${layout.photoCount} photo${layout.photoCount > 1 ? "s" : ""}`;
 
     const formats = document.createElement("div");
     formats.className = "preset-formats";
