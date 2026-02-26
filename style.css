@@ -124,9 +124,9 @@ main {
 /* ── Layout cards (2-way / 3-way) ── */
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gap);
-  max-width: 480px;
+  max-width: 720px;
 }
 
 .preset-card {
