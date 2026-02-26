@@ -171,7 +171,7 @@ main {
 }
 
 /* ── Upload zones ── */
-.upload-zones { display: flex; gap: var(--gap); flex-wrap: wrap; }
+.upload-zones { display: flex; gap: var(--gap); flex-wrap: wrap; max-width: 700px; }
 
 .upload-zone {
   flex: 1;
@@ -259,6 +259,7 @@ main {
   border: none;
   border-radius: 50%;
   width: 26px; height: 26px;
+  padding: 0;
   color: #fff;
   font-size: 0.9rem;
   cursor: pointer;
