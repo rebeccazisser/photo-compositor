@@ -126,6 +126,7 @@ main {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--gap);
+  max-width: 700px;
 }
 
 .preset-card {
