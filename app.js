@@ -27,6 +27,7 @@ const state = {
   composited: false,
   canvasEls: [],    // one HTMLCanvasElement per OUTPUT_FORMAT
   drag: null,       // { formatIndex, panelIndex, startMouseX, startMouseY, startPanX, startPanY }
+  showGrid: false,
 };
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -399,10 +400,36 @@ function renderForFormat(fi, fmt) {
 
   let x = 0;
   for (let i = 0; i < count; i++) {
-    if (i > 0) x += divW; // divider drawn by background fill; just advance
+    if (i > 0) x += divW;
     drawPanel(ctx, state.imageEls[i], x, 0, slotW, height, i, state.adjustments[fi][i]);
     x += slotW;
   }
+
+  if (state.showGrid) drawGrid(ctx, width, height, count, slotW, divW);
+}
+
+function drawGrid(ctx, width, height, count, slotW, divW) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 4;
+  ctx.setLineDash([]);
+
+  // Horizontal lines span full canvas at 1/3 and 2/3 height
+  [1/3, 2/3].forEach(t => {
+    ctx.beginPath(); ctx.moveTo(0, height * t); ctx.lineTo(width, height * t); ctx.stroke();
+  });
+
+  // Vertical lines at 1/3 and 2/3 within each panel individually
+  let x = 0;
+  for (let i = 0; i < count; i++) {
+    if (i > 0) x += divW;
+    [1/3, 2/3].forEach(t => {
+      ctx.beginPath(); ctx.moveTo(x + slotW * t, 0); ctx.lineTo(x + slotW * t, height); ctx.stroke();
+    });
+    x += slotW;
+  }
+
+  ctx.restore();
 }
 
 // ── Draw one panel ────────────────────────────────────────────────────────────
@@ -507,10 +534,27 @@ function buildAdjControls(fi) {
   const wrapper = document.createElement("div");
   wrapper.className = "canvas-adjs";
 
-  const hint = document.createElement("div");
-  hint.className = "canvas-adjs-hint";
-  hint.textContent = "Drag image to reposition · Use sliders to zoom";
-  wrapper.appendChild(hint);
+  const hintRow = document.createElement("div");
+  hintRow.className = "canvas-adjs-hint";
+
+  const hintText = document.createElement("span");
+  hintText.textContent = "Drag image to reposition · Use sliders to zoom";
+
+  const gridLabel = document.createElement("label");
+  gridLabel.className = "grid-toggle";
+  const gridCheck = document.createElement("input");
+  gridCheck.type = "checkbox";
+  gridCheck.checked = state.showGrid;
+  gridCheck.addEventListener("change", () => {
+    state.showGrid = gridCheck.checked;
+    // Sync all other grid checkboxes
+    document.querySelectorAll(".grid-toggle input").forEach(cb => cb.checked = state.showGrid);
+    renderAllCanvases();
+  });
+  gridLabel.append(gridCheck, document.createTextNode(" Show grid lines"));
+
+  hintRow.append(hintText, gridLabel);
+  wrapper.appendChild(hintRow);
 
   for (let i = 0; i < count; i++) {
     const focal = state.focalPoints[i];
@@ -593,6 +637,7 @@ function resetPreview(clearComposited = true) {
   canvasLoading.hidden = true;
   btnDownload.disabled = true;
   btnDownload.hidden = true;
+  state.showGrid = false;
 }
 
 function resetAll() {

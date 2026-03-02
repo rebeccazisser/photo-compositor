@@ -191,7 +191,8 @@ main {
 }
 
 .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--surface-2); }
-.upload-zone.has-image { border-style: solid; border-color: var(--success); }
+.upload-zone.has-image { border-style: solid; border-color: var(--accent); }
+input[type="checkbox"] { accent-color: var(--accent); }
 .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 
 .zone-label {
@@ -291,6 +292,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 button:disabled { opacity: 0.38; cursor: not-allowed; }
 
 button.secondary { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); }
+button.secondary.active { background: var(--text); border-color: var(--text); color: #fff; }
 button.secondary:hover:not(:disabled) { background: var(--border); color: var(--text); }
 
 .btn-download {
@@ -395,6 +397,18 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
   color: var(--text-muted);
   opacity: 0.6;
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.grid-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 1;
 }
 
 /* Compact single-row per photo */
