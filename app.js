@@ -92,21 +92,57 @@ function measureSharpness(dataURL) {
 
 // ── Face Detection ────────────────────────────────────────────────────────────
 
+let faceApiReady = false;
+
+async function initFaceApi() {
+  try {
+    await faceapi.nets.tinyFaceDetector.loadFromUri("./weights");
+    faceApiReady = true;
+  } catch (e) {
+    console.warn("face-api.js model failed to load:", e);
+  }
+}
+
 async function detectFace(dataURL) {
-  if (!("FaceDetector" in window)) return { x: 0.5, y: 0.5, faceFound: false };
+  if (!faceApiReady) return { x: 0.5, y: 0.5, faceFound: false };
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = async () => {
       try {
-        const detector = new FaceDetector({ fastMode: true });
-        const faces = await detector.detect(img);
-        if (!faces.length) return resolve({ x: 0.5, y: 0.5, faceFound: false });
-        const face = faces.sort(
-          (a, b) => b.boundingBox.width * b.boundingBox.height - a.boundingBox.width * a.boundingBox.height
-        )[0];
+        // Pre-scale to max 1200px on the longest dimension before detection.
+        // TinyFaceDetector struggles with full-body shots where the face is a
+        // small fraction of a high-res image. Pre-scaling normalises face size
+        // for the detector without changing the normalised (0–1) coordinates.
+        const MAX_DIM = 1200;
+        const longestDim = Math.max(img.naturalWidth, img.naturalHeight);
+        const prescale = longestDim > MAX_DIM ? MAX_DIM / longestDim : 1;
+
+        let detectionEl = img;
+        if (prescale < 1) {
+          const c = document.createElement("canvas");
+          c.width  = Math.round(img.naturalWidth  * prescale);
+          c.height = Math.round(img.naturalHeight * prescale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          detectionEl = c;
+        }
+
+        const detW = detectionEl instanceof HTMLCanvasElement ? detectionEl.width  : img.naturalWidth;
+        const detH = detectionEl instanceof HTMLCanvasElement ? detectionEl.height : img.naturalHeight;
+
+        const detection = await faceapi.detectSingleFace(
+          detectionEl,
+          new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.35 })
+        );
+
+        if (!detection) return resolve({ x: 0.5, y: 0.5, faceFound: false });
+        const box = detection.box;
+        // Normalised coords are scale-invariant — no conversion needed.
+        // Use estimated eye level (38% from top of bounding box) rather than
+        // face centre (50%) — eyes are what the brain uses to judge "same plane".
         resolve({
-          x: (face.boundingBox.left + face.boundingBox.width  / 2) / img.naturalWidth,
-          y: (face.boundingBox.top  + face.boundingBox.height / 2) / img.naturalHeight,
+          x:     (box.x + box.width  / 2)    / detW,
+          y:     (box.y + box.height * 0.38) / detH,
+          faceH: box.height / detH,
           faceFound: true,
         });
       } catch {
@@ -311,11 +347,6 @@ async function compose() {
     .reduce((s, v) => s + v, 0) / count;
   state.targetFocalY = Math.max(0.25, Math.min(0.65, avgY));
 
-  // Init per-format, per-panel adjustments (independent for each output format)
-  state.adjustments = OUTPUT_FORMATS.map(() =>
-    Array.from({ length: count }, () => ({ panX: 0, panY: 0, scale: 1.0 }))
-  );
-
   // Load image elements once
   state.imageEls = await Promise.all(
     Array.from({ length: count }, (_, i) =>
@@ -326,6 +357,78 @@ async function compose() {
       })
     )
   );
+
+  // Init per-format, per-panel adjustments — equalize face sizes AND align face Y position
+  state.adjustments = OUTPUT_FORMATS.map((fmt) => {
+    const { width, height } = fmt;
+    const { width: divW } = DIVIDER;
+    const slotW = Math.floor((width - divW * (count - 1)) / count);
+
+    // 1. Base scale for each panel
+    const baseScales = Array.from({ length: count }, (_, i) => {
+      const img = state.imageEls[i];
+      return Math.max(slotW / img.width, height / img.height);
+    });
+
+    // 2. Rendered face heights at base scale, and per-panel minScale floor
+    const renderedFaceHeights = Array.from({ length: count }, (_, i) => {
+      const focal = state.focalPoints[i];
+      if (!focal?.faceFound || !focal.faceH) return null;
+      return focal.faceH * state.imageEls[i].height * baseScales[i];
+    });
+
+    // Ensure drawH is at least 150% of slot height so Y-alignment always has
+    // room to shift the image to the target eye position.
+    const minScales = Array.from({ length: count }, (_, i) =>
+      (height * 1.5) / (state.imageEls[i].height * baseScales[i])
+    );
+
+    // Target face height must be based on the floor face height (renderedFaceH * minScale)
+    // so that panels bumped by minScale don't end up larger than panels equalized to the
+    // old (pre-minScale) target — which is what caused the middle photo to look smaller.
+    const floorFaceHeights = renderedFaceHeights.map((rfh, i) =>
+      rfh != null ? rfh * minScales[i] : null
+    );
+    const validFloorFaceH = floorFaceHeights.filter(v => v != null);
+    const targetFaceHeight = validFloorFaceH.length > 1 ? Math.max(...validFloorFaceH) : null;
+
+    const scales = Array.from({ length: count }, (_, i) => {
+      const eqScale = (targetFaceHeight != null && renderedFaceHeights[i] != null)
+        ? Math.min(3.0, targetFaceHeight / renderedFaceHeights[i])
+        : 1.0;
+      return Math.min(3.0, Math.max(eqScale, minScales[i]));
+    });
+
+    // 3. Find the Y range each panel can place its eye level without image-boundary clamping.
+    //    Valid eye Y for panel i: [height - (1-focal.y)*drawH,  focal.y*drawH]
+    //    Intersect all ranges to get a shared achievable Y.
+    const faceYRanges = Array.from({ length: count }, (_, i) => {
+      const focal = state.focalPoints[i];
+      if (!focal?.faceFound) return null;
+      const drawH = state.imageEls[i].height * baseScales[i] * scales[i];
+      return { lower: height - (1 - focal.y) * drawH, upper: focal.y * drawH };
+    });
+    const validRanges = faceYRanges.filter(r => r != null);
+
+    let panY = 0;
+    if (validRanges.length > 1) {
+      const preferred = 0.38 * height;
+      const commonLower = Math.max(...validRanges.map(r => r.lower));
+      const commonUpper = Math.min(...validRanges.map(r => r.upper));
+      // Use intersection if it exists; otherwise aim for preferred Y anyway —
+      // each panel will clamp independently, which is still better than panY=0.
+      const targetFaceY = (commonLower <= commonUpper)
+        ? Math.min(commonUpper, Math.max(commonLower, preferred))
+        : preferred;
+      panY = targetFaceY - state.targetFocalY * height;
+    }
+
+    return Array.from({ length: count }, (_, i) => ({
+      panX: 0,
+      panY: state.focalPoints[i]?.faceFound ? panY : 0,
+      scale: scales[i],
+    }));
+  });
 
   // Build dual canvas UI
   canvasLoading.hidden = true;
@@ -566,23 +669,21 @@ function buildAdjControls(fi) {
 
     const labelEl = document.createElement("div");
     labelEl.className = "adj-card-label";
-    labelEl.innerHTML = `Photo ${i + 1}${focal?.faceFound ? '<span class="face-tag">face aligned</span>' : ""}`;
+    labelEl.textContent = `Photo ${i + 1}`;
 
     const zoomRow = document.createElement("div");
     zoomRow.className = "adj-row";
 
     const zoomLabel = Object.assign(document.createElement("label"), { textContent: "Zoom" });
     const slider = Object.assign(document.createElement("input"), {
-      type: "range", min: "1", max: "3", step: "0.05", value: "1",
+      type: "range", min: "1", max: "3", step: "0.05", value: String(adj.scale.toFixed(2)),
     });
     const valueEl = Object.assign(document.createElement("span"), {
-      className: "adj-value", textContent: "1.0×",
+      className: "adj-value", textContent: adj.scale.toFixed(1) + "×",
     });
 
     slider.addEventListener("input", () => {
       adj.scale = parseFloat(slider.value);
-      adj.panX  = 0;
-      adj.panY  = 0;
       valueEl.textContent = adj.scale.toFixed(1) + "×";
       renderForFormat(fi, fmt);
     });
@@ -679,5 +780,6 @@ document.addEventListener("paste", (e) => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+initFaceApi();
 renderPresets();
 updateComposeButton();

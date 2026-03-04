@@ -224,9 +224,9 @@ input[type="checkbox"] { accent-color: var(--accent); }
   bottom: 10px; left: 12px;
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--success);
-  background: rgba(62,207,142,0.12);
-  border: 1px solid rgba(62,207,142,0.3);
+  color: #ffffff;
+  background: rgba(0,0,0,0.72);
+  border: none;
   border-radius: 20px;
   padding: 2px 8px;
   pointer-events: none;
@@ -432,14 +432,6 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
   min-width: 52px;
 }
 
-.adj-card-label .face-tag {
-  font-weight: 600;
-  color: var(--success);
-  font-size: 0.68rem;
-  margin-left: 5px;
-  text-transform: none;
-  letter-spacing: 0;
-}
 
 .adj-row { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: var(--text-muted); }
 .adj-row label { white-space: nowrap; }
