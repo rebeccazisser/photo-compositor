@@ -383,14 +383,23 @@ async function compose() {
       (height * 1.5) / (state.imageEls[i].height * baseScales[i])
     );
 
-    // Target face height must be based on the floor face height (renderedFaceH * minScale)
-    // so that panels bumped by minScale don't end up larger than panels equalized to the
-    // old (pre-minScale) target — which is what caused the middle photo to look smaller.
+    // Target face height needs two constraints:
+    // 1. At least max(renderedFaceH * minScale): so panels bumped by minScale don't exceed
+    //    the target (which caused the "middle panel smaller" bug with the old algorithm).
+    // 2. At most min(renderedFaceH * 3.0): so we never ask a panel to exceed the 3× cap.
+    //    Without this, when one photo is an extreme close-up its floor sets an enormous
+    //    target, forcing other panels to 3× and still appear smaller.
     const floorFaceHeights = renderedFaceHeights.map((rfh, i) =>
       rfh != null ? rfh * minScales[i] : null
     );
     const validFloorFaceH = floorFaceHeights.filter(v => v != null);
-    const targetFaceHeight = validFloorFaceH.length > 1 ? Math.max(...validFloorFaceH) : null;
+    const validRenderedFaceH = renderedFaceHeights.filter(v => v != null);
+    const targetFaceHeight = validFloorFaceH.length > 1
+      ? Math.min(
+          Math.max(...validFloorFaceH),           // floor: at least the largest minScale face
+          Math.min(...validRenderedFaceH) * 3.0   // ceiling: what smallest-face panel can reach
+        )
+      : null;
 
     const scales = Array.from({ length: count }, (_, i) => {
       const eqScale = (targetFaceHeight != null && renderedFaceHeights[i] != null)
