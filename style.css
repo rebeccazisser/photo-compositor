@@ -374,6 +374,23 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
 
 .canvas-entry canvas.dragging { cursor: grabbing; }
 
+.btn-download-single {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-download-single:hover {
+  color: var(--text);
+  border-color: #aaa;
+}
+
 /* Spinner */
 .spinner {
   width: 28px; height: 28px;

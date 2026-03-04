@@ -470,7 +470,13 @@ function buildCanvasEntries() {
     labelEl.className = "canvas-entry-label";
     labelEl.textContent = `${fmt.label} — ${fmt.width} × ${fmt.height} px`;
 
+    const dlBtn = document.createElement("button");
+    dlBtn.className = "btn-download-single";
+    dlBtn.textContent = `↓ ${fmt.label}`;
+    dlBtn.addEventListener("click", () => downloadOne(fi));
+
     header.appendChild(labelEl);
+    header.appendChild(dlBtn);
 
     // Canvas
     const canvas = document.createElement("canvas");
@@ -718,6 +724,16 @@ function buildAdjControls(fi) {
 }
 
 // ── Download ──────────────────────────────────────────────────────────────────
+
+function downloadOne(fi) {
+  const fmt  = OUTPUT_FORMATS[fi];
+  const name = (state.selectedLayout.name + "-" + fmt.suffix).toLowerCase().replace(/\s+/g, "-");
+  const link = Object.assign(document.createElement("a"), {
+    download: `composite-${name}.jpg`,
+    href: state.canvasEls[fi].toDataURL("image/jpeg", 0.92),
+  });
+  link.click();
+}
 
 function downloadAll() {
   OUTPUT_FORMATS.forEach((fmt, fi) => {
