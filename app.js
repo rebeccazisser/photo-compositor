@@ -402,10 +402,14 @@ async function compose() {
       : null;
 
     const scales = Array.from({ length: count }, (_, i) => {
+      const hasFace = state.focalPoints[i]?.faceFound;
       const eqScale = (targetFaceHeight != null && renderedFaceHeights[i] != null)
         ? Math.min(3.0, targetFaceHeight / renderedFaceHeights[i])
         : 1.0;
-      return Math.min(3.0, Math.max(eqScale, minScales[i]));
+      // Only apply the minScale floor (needed for Y-alignment room) when a face
+      // was detected. Panels without faces stay at base scale (no extra zoom).
+      const floor = hasFace ? minScales[i] : 1.0;
+      return Math.min(3.0, Math.max(eqScale, floor));
     });
 
     // 3. Find the Y range each panel can place its eye level without image-boundary clamping.
