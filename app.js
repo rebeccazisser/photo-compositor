@@ -322,6 +322,22 @@ function removeImage(index) {
   resetPreview();
 }
 
+function swapImages(i, j) {
+  [state.images[i],      state.images[j]]      = [state.images[j],      state.images[i]];
+  [state.focalPoints[i], state.focalPoints[j]]  = [state.focalPoints[j], state.focalPoints[i]];
+  renderUploadZones(state.selectedLayout.photoCount);
+  if (state.composited) {
+    // Swap loaded image elements and per-format adjustments so zoom/position
+    // is preserved and there's no full recompose (which causes a page jump).
+    [state.imageEls[i], state.imageEls[j]] = [state.imageEls[j], state.imageEls[i]];
+    state.adjustments.forEach(fmtAdjs => {
+      [fmtAdjs[i], fmtAdjs[j]] = [fmtAdjs[j], fmtAdjs[i]];
+    });
+    buildCanvasEntries();
+    renderAllCanvases();
+  }
+}
+
 function updateComposeButton() {
   if (!state.selectedLayout) { btnCompose.disabled = true; return; }
   let loaded = 0;
@@ -488,11 +504,58 @@ function buildCanvasEntries() {
     canvas.height = fmt.height;
     attachCanvasDrag(canvas, fi);
 
+    // Swap arrow overlay (pointer-events: none so drag still works;
+    // only the arrow buttons themselves are pointer-events: auto)
+    const wrapper = document.createElement("div");
+    wrapper.className = "canvas-wrapper";
+    wrapper.appendChild(canvas);
+
+    const count = state.selectedLayout.photoCount;
+    if (count > 1) {
+      const overlay = document.createElement("div");
+      overlay.className = "canvas-overlay";
+
+      for (let i = 0; i < count; i++) {
+        if (i > 0) {
+          const divider = document.createElement("div");
+          divider.className = "canvas-overlay-divider";
+          overlay.appendChild(divider);
+        }
+        const panel = document.createElement("div");
+        panel.className = "canvas-overlay-panel";
+
+        const svgArrow = (dir) => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
+          dir === 'left'
+            ? '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/>'
+            : '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/>'
+        }</svg>`;
+
+        if (i > 0) {
+          const btn = document.createElement("button");
+          btn.className = "canvas-swap-arrow";
+          btn.innerHTML = svgArrow('left');
+          btn.title = `Swap photos ${i} & ${i + 1}`;
+          btn.addEventListener("click", () => swapImages(i, i - 1));
+          panel.appendChild(btn);
+        }
+        if (i < count - 1) {
+          const btn = document.createElement("button");
+          btn.className = "canvas-swap-arrow";
+          btn.innerHTML = svgArrow('right');
+          btn.title = `Swap photos ${i + 1} & ${i + 2}`;
+          btn.addEventListener("click", () => swapImages(i, i + 1));
+          panel.appendChild(btn);
+        }
+        overlay.appendChild(panel);
+      }
+      wrapper.appendChild(overlay);
+    }
+
     // Per-canvas adjustment controls
     const adjsEl = buildAdjControls(fi);
 
     entry.appendChild(header);
-    entry.appendChild(canvas);
+    entry.appendChild(wrapper);
     entry.appendChild(adjsEl);
     canvasArea.appendChild(entry);
     state.canvasEls.push(canvas);

@@ -363,6 +363,11 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
   letter-spacing: 0.06em;
 }
 
+.canvas-wrapper {
+  position: relative;
+  display: block;
+}
+
 .canvas-entry canvas {
   max-width: 100%;
   height: auto;
@@ -371,6 +376,46 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
   cursor: grab;
   display: block;
 }
+
+.canvas-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.canvas-overlay-divider { flex: 0 0 0.6%; }
+
+.canvas-overlay-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.canvas-swap-arrow {
+  pointer-events: auto;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.65);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, background 0.15s;
+}
+.canvas-wrapper:hover .canvas-swap-arrow { opacity: 0.85; }
+.canvas-swap-arrow:hover { opacity: 1 !important; background: rgba(0, 42, 255, 0.85); }
 
 .canvas-entry canvas.dragging { cursor: grabbing; }
 
@@ -463,6 +508,7 @@ button.secondary:hover:not(:disabled) { background: var(--border); color: var(--
 }
 
 .adj-reset { flex-shrink: 0; padding: 4px 10px; font-size: 0.75rem; }
+
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
