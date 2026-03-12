@@ -586,8 +586,10 @@ function renderForFormat(fi, fmt) {
   let x = 0;
   for (let i = 0; i < count; i++) {
     if (i > 0) x += divW;
-    drawPanel(ctx, state.imageEls[i], x, 0, slotW, height, i, state.adjustments[fi][i]);
-    x += slotW;
+    // Last panel takes any remaining pixels to avoid sub-pixel gaps on the right edge
+    const panelW = i === count - 1 ? width - x : slotW;
+    drawPanel(ctx, state.imageEls[i], x, 0, panelW, height, i, state.adjustments[fi][i]);
+    x += panelW;
   }
 
   if (state.showGrid) drawGrid(ctx, width, height, count, slotW, divW);
