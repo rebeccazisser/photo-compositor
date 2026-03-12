@@ -41,6 +41,8 @@ const btnReset          = document.getElementById("btn-reset");
 const canvasArea        = document.getElementById("canvas-area");
 const canvasPlaceholder = document.getElementById("canvas-placeholder");
 const canvasLoading     = document.getElementById("canvas-loading");
+const creditReminder    = document.getElementById("credit-reminder");
+const creditPattern     = document.getElementById("credit-reminder-pattern");
 // (per-canvas adjustment controls are built and injected by buildAdjControls())
 
 // ── Image quality checks ───────────────────────────────────────────────────────
@@ -469,6 +471,11 @@ async function compose() {
   btnCompose.disabled = false;
   btnDownload.disabled = false;
   btnDownload.hidden = false;
+
+  // Show credit line reminder
+  const n = state.selectedLayout.photoCount;
+  creditPattern.textContent = Array.from({ length: n }, (_, i) => `Photo ${i + 1} Credit`).join("; ");
+  creditReminder.hidden = false;
 }
 
 // ── Build canvas entry elements ───────────────────────────────────────────────
@@ -832,6 +839,7 @@ function resetPreview(clearComposited = true) {
   canvasLoading.hidden = true;
   btnDownload.disabled = true;
   btnDownload.hidden = true;
+  creditReminder.hidden = true;
   state.showGrid = false;
 }
 
