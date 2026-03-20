@@ -382,37 +382,32 @@ async function compose() {
     )
   );
 
-  // Init per-format, per-panel adjustments — equalize face sizes AND align face Y position
+  // Init per-format, per-panel adjustments — align face Y position (no size equalization)
   state.adjustments = OUTPUT_FORMATS.map((fmt) => {
     const { width, height } = fmt;
     const { width: divW } = DIVIDER;
     const slotW = Math.floor((width - divW * (count - 1)) / count);
 
-    // 1. Base scale for each panel
+    // 1. Base scale for each panel (just enough to cover the slot)
     const baseScales = Array.from({ length: count }, (_, i) => {
       const img = state.imageEls[i];
       return Math.max(slotW / img.width, height / img.height);
     });
 
-    // 2. Rendered face heights at base scale, and per-panel minScale floor
+    // 2. Minimum scale so Y-alignment has room to shift the image.
+    //    Ensure drawH >= 150% of slot height. Always clamp to >= 1.0 so cover is maintained.
+    const minScales = Array.from({ length: count }, (_, i) =>
+      Math.max(1.0, (height * 1.5) / (state.imageEls[i].height * baseScales[i]))
+    );
+
+    // 3. Rendered face heights at base scale
     const renderedFaceHeights = Array.from({ length: count }, (_, i) => {
       const focal = state.focalPoints[i];
       if (!focal?.faceFound || !focal.faceH) return null;
       return focal.faceH * state.imageEls[i].height * baseScales[i];
     });
 
-    // Ensure drawH is at least 150% of slot height so Y-alignment always has
-    // room to shift the image to the target eye position.
-    const minScales = Array.from({ length: count }, (_, i) =>
-      (height * 1.5) / (state.imageEls[i].height * baseScales[i])
-    );
-
-    // Target face height needs two constraints:
-    // 1. At least max(renderedFaceH * minScale): so panels bumped by minScale don't exceed
-    //    the target (which caused the "middle panel smaller" bug with the old algorithm).
-    // 2. At most min(renderedFaceH * 3.0): so we never ask a panel to exceed the 3× cap.
-    //    Without this, when one photo is an extreme close-up its floor sets an enormous
-    //    target, forcing other panels to 3× and still appear smaller.
+    // 4. Target face height: equalize sizes, bounded by minScale floor and 3× cap.
     const floorFaceHeights = renderedFaceHeights.map((rfh, i) =>
       rfh != null ? rfh * minScales[i] : null
     );
@@ -420,8 +415,8 @@ async function compose() {
     const validRenderedFaceH = renderedFaceHeights.filter(v => v != null);
     const targetFaceHeight = validFloorFaceH.length > 1
       ? Math.min(
-          Math.max(...validFloorFaceH),           // floor: at least the largest minScale face
-          Math.min(...validRenderedFaceH) * 3.0   // ceiling: what smallest-face panel can reach
+          Math.max(...validFloorFaceH),
+          Math.min(...validRenderedFaceH) * 3.0
         )
       : null;
 
@@ -430,11 +425,9 @@ async function compose() {
       const eqScale = (targetFaceHeight != null && renderedFaceHeights[i] != null)
         ? Math.min(3.0, targetFaceHeight / renderedFaceHeights[i])
         : 1.0;
-      // Only apply the minScale floor (needed for Y-alignment room) when a face
-      // was detected. Panels without faces stay at base scale (no extra zoom).
       const floor = hasFace ? minScales[i] : 1.0;
-      // adj.scale < 1.0 would zoom below "cover", leaving white gaps — clamp to 1.0 minimum
-      return Math.min(3.0, Math.max(eqScale, floor, 1.0));
+      // Always >= 1.0 so adj.scale never zooms below cover, preventing white gaps
+      return Math.min(3.0, Math.max(eqScale, floor));
     });
 
     // 3. Find the Y range each panel can place its eye level without image-boundary clamping.
