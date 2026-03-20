@@ -131,10 +131,16 @@ async function detectFace(dataURL) {
         const detW = detectionEl instanceof HTMLCanvasElement ? detectionEl.width  : img.naturalWidth;
         const detH = detectionEl instanceof HTMLCanvasElement ? detectionEl.height : img.naturalHeight;
 
-        const detection = await faceapi.detectSingleFace(
-          detectionEl,
-          new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.35 })
-        );
+        // Try multiple inputSizes: 608 catches small faces in large images;
+        // smaller values (416, 224) catch large/close-up faces that fill the frame.
+        let detection = null;
+        for (const inputSize of [608, 416, 224]) {
+          detection = await faceapi.detectSingleFace(
+            detectionEl,
+            new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: 0.35 })
+          );
+          if (detection) break;
+        }
 
         if (!detection) return resolve({ x: 0.5, y: 0.5, faceFound: false });
         const box = detection.box;
@@ -427,7 +433,8 @@ async function compose() {
       // Only apply the minScale floor (needed for Y-alignment room) when a face
       // was detected. Panels without faces stay at base scale (no extra zoom).
       const floor = hasFace ? minScales[i] : 1.0;
-      return Math.min(3.0, Math.max(eqScale, floor));
+      // adj.scale < 1.0 would zoom below "cover", leaving white gaps — clamp to 1.0 minimum
+      return Math.min(3.0, Math.max(eqScale, floor, 1.0));
     });
 
     // 3. Find the Y range each panel can place its eye level without image-boundary clamping.
